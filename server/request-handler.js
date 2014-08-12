@@ -5,6 +5,9 @@
  * this file and include it in basic-server.js so that it actually works.
  * *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html. */
 
+var messages = [];
+var url = "/classes/messages";
+
 var handleRequest = function(request, response) {
   /* the 'request' argument comes from nodes http module. It includes info about the
   request - such as what URL the browser is requesting. */
@@ -14,22 +17,49 @@ var handleRequest = function(request, response) {
 
   console.log("Serving request type " + request.method + " for url " + request.url);
 
-  var statusCode = 200;
-
-  /* Without this line, this server wouldn't work. See the note
-   * below about CORS. */
+  var statusCode;
   var headers = defaultCorsHeaders;
 
-  headers['Content-Type'] = "text/plain";
+  var handleGet = function() {
+    statusCode = 200;
+    response.writeHead(statusCode, headers);
+    var data = { results: messages };
+    response.write(JSON.stringify(data));
+    response.end();
+  };
 
-  /* .writeHead() tells our server what HTTP status code to send back */
-  response.writeHead(statusCode, headers);
+  var handleOptions = function() {
+    headers['Allow'] = 'GET,POST';
+    statusCode = 200;
+    response.writeHead(statusCode, headers);
+    response.end();
+  };
 
-  /* Make sure to always call response.end() - Node will not send
-   * anything back to the client until you do. The string you pass to
-   * response.end() will be the body of the response - i.e. what shows
-   * up in the browser.*/
-  response.end("Hello, World!");
+  var handlePost = function() {
+    statusCode = 201;
+    response.writeHead(statusCode, headers);
+    request.on('data', function(data) {
+      messages.push(JSON.parse(data))
+      response.write("Success. Message received.");
+      response.end();
+    });
+  };
+
+  var router = {
+    'GET': handleGet,
+    'OPTIONS': handleOptions,
+    'POST': handlePost
+  };
+
+  if (request.url === url) {
+    router[request.method]();
+  } else {
+    statusCode = 404;
+    response.writeHead(statusCode, headers);
+    response.end();
+  }
+
+
 };
 
 /* These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -43,3 +73,5 @@ var defaultCorsHeaders = {
   "access-control-allow-headers": "content-type, accept",
   "access-control-max-age": 10 // Seconds.
 };
+
+module.exports = handleRequest;
