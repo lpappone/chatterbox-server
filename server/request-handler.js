@@ -5,10 +5,10 @@
  * this file and include it in basic-server.js so that it actually works.
  * *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html. */
 
-var messages = [];
-var url = "/classes/messages";
+var messages = {};
+var apiUrl = "classes";
 
-var handleRequest = function(request, response) {
+var handler = function(request, response) {
   /* the 'request' argument comes from nodes http module. It includes info about the
   request - such as what URL the browser is requesting. */
 
@@ -19,13 +19,32 @@ var handleRequest = function(request, response) {
 
   var statusCode;
   var headers = defaultCorsHeaders;
+  var roomname;
+
+  console.log(request.url);
+
+  var urlHandler = function() {
+    var roomArray = request.url.split('/');
+    var baseUrl = roomArray[1];
+    if (baseUrl === "") {
+
+    }
+    if (baseUrl === apiUrl) {
+      roomname = roomArray[2];
+      router[request.method]();
+    } else {
+      fileNotFoundResponse();
+    }
+  }
 
   var handleGet = function() {
     statusCode = 200;
+    var data = { results: [] };
     response.writeHead(statusCode, headers);
-    var data = { results: messages };
-    response.write(JSON.stringify(data));
-    response.end();
+    if (messages[roomname]){
+      data.results = messages[roomname]
+    }
+    response.end(JSON.stringify(data));
   };
 
   var handleOptions = function() {
@@ -39,10 +58,19 @@ var handleRequest = function(request, response) {
     statusCode = 201;
     response.writeHead(statusCode, headers);
     request.on('data', function(data) {
-      messages.push(JSON.parse(data))
-      response.write("Success. Message received.");
-      response.end();
+      data = JSON.parse(data);
+      if (!messages[roomname]) {
+        messages[roomname] = [];
+      };
+      messages[roomname].push(data)
+      response.end("Success. Message received.");
     });
+  };
+
+  var fileNotFoundResponse = function() {
+    statusCode = 404;
+    response.writeHead(statusCode, headers);
+    response.end();
   };
 
   var router = {
@@ -51,14 +79,7 @@ var handleRequest = function(request, response) {
     'POST': handlePost
   };
 
-  if (request.url === url) {
-    router[request.method]();
-  } else {
-    statusCode = 404;
-    response.writeHead(statusCode, headers);
-    response.end();
-  }
-
+  urlHandler();
 
 };
 
@@ -74,4 +95,4 @@ var defaultCorsHeaders = {
   "access-control-max-age": 10 // Seconds.
 };
 
-module.exports = handleRequest;
+exports.handler = handler;

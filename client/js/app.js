@@ -1,8 +1,8 @@
 var app = {};
 
 app.username;
-app.server = 'http://127.0.0.1:3000/classes/messages';
-app.currentRoom;
+app.server = 'http://127.0.0.1:3000/classes/';
+app.currentRoom = 'lobby';
 app.rooms = [];
 app.friends = [];
 app.messages = [];
@@ -18,7 +18,6 @@ app.init = function() {
     event.preventDefault();
     app.username = $('#username').val();
     app.message = $('#message').val();
-    app.currentRoom = $('#room').val();
     $('#message').val('');
     app.send({username: app.username,
               message: app.message,
@@ -34,7 +33,6 @@ app.init = function() {
   //change room listener
   $('#roomSelector').on('change', function(event) {
     app.currentRoom = $('#roomSelector').val();
-    app.changeRoom();
   });
 
   //add friend listener
@@ -49,6 +47,8 @@ app.init = function() {
   $('.refresh').on('click', function(event) {
     app.fetch();
   });
+
+  app.addRoom('lobby');
 };
 
 app.clearMessages = function() {
@@ -56,19 +56,19 @@ app.clearMessages = function() {
 };
 
 app.displayMessage = function(message) {
-  if (!app.currentRoom || message.room === app.currentRoom) {
-    var m = $(app.messageTemplate(message));
-    if (_.contains(app.friends, message.username)) {
-      m.css('font-weight', 'bold');
-    }
-    $('table').prepend(m);
+  var m = $(app.messageTemplate(message));
+  if (_.contains(app.friends, message.username)) {
+    m.css('font-weight', 'bold');
   }
+  $('table').prepend(m);
 };
 
 app.addRoom = function(room) {
-  app.rooms.push(room);
-  $('#roomSelector').append(app.roomTemplate({room: room}));
-  $('#room').val('');
+  if (!_.contains(app.rooms, room)) {
+    app.rooms.push(room);
+    $('#roomSelector').append(app.roomTemplate({room: room}));
+    $('#room').val('');
+  }
 };
 
 app.render = function(room) {
@@ -81,7 +81,7 @@ app.render = function(room) {
 app.send = function(message) {
   message = JSON.stringify(message);
   $.ajax({
-    url: app.server,
+    url: app.server + app.currentRoom,
     type: 'POST',
     contentType: 'application/json',
     data: message,
@@ -92,7 +92,7 @@ app.send = function(message) {
 
 app.fetch = function() {
   $.ajax({
-    url: app.server,
+    url: app.server + app.currentRoom,
     type: 'GET',
     contentType: 'application/json',
     success: app.handleNewData
@@ -101,6 +101,7 @@ app.fetch = function() {
 
 app.handleNewData = function(data) {
   data = JSON.parse(data).results;
+  console.log(data)
   app.messages = data;
   app.render();
 };
